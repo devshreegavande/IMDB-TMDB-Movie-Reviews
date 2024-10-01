@@ -1,29 +1,12 @@
 import os
 import requests
 import json
+import pandas as pd
 
 
 def write_to_file_with(filename, content):
     with open(filename, 'w') as file:
         file.write(content)
-
-
-search_imdb_id_string = "title/tt"
-movies_list_files = "dataset/1_movies_per_genre"
-imdb_id_list = []
-for file_name in os.listdir(movies_list_files):
-    file_path = movies_list_files+"/"+file_name
-    with open(file_path, 'r') as file:
-        for line in file:
-            if search_imdb_id_string in line:
-                index = line.find(search_imdb_id_string)
-                imdb_id_index = index+len(search_imdb_id_string) - 2
-                imdb_id_end_index = line.find("/", imdb_id_index)
-                imdb_id = line[imdb_id_index:imdb_id_end_index]
-                if imdb_id not in imdb_id_list:
-                    imdb_id_list.append(imdb_id)
-print(f"imdb ids count: {len(imdb_id_list)}")
-
 
 def tmdb_api_call(url:str):
     headers = {
@@ -41,6 +24,18 @@ def tmdb_api_call(url:str):
         print(f"Request failed with status code: {response.status_code} for url {url}")
 
 
+# writes file with all imdb movie ids
+# df = pd.read_json("hf://datasets/DDDDZQ/imdb_reviews/data.jsonl", lines=True)
+# imdb_id_list = list(pd.unique(df['movie']))
+# write_to_file_with("imdb_id_list.json", json.dumps(imdb_id_list))
+
+
+with open('imdb_id_list.json', 'r') as file:
+    movie_imdb_id_list = json.loads(file.read())
+
+print("movie count: {len(movie_imdb_id_list)}")
+    
+
 tmdb_url_part1 = "https://api.themoviedb.org/3/find/"
 tmdb_url_part2 = "?external_source=imdb_id"
 language_part = "language=en-US"
@@ -52,19 +47,67 @@ headers = {
 
 tmdb_movie_details_list = []
 cnt = 1
-for id in imdb_id_list:
+for id in movie_imdb_id_list:
     tmdb_url = tmdb_url_part1+id+tmdb_url_part2+"&"+language_part
     json_data = tmdb_api_call(tmdb_url)
-    if json_data is not None or len(json_data['movie_results']) != 0:
+    
+    if json_data is not None and len(json_data['movie_results']) != 0:
         movie_id = json_data['movie_results'][0]['id']
         tmdb_movie_details_url = f"https://api.themoviedb.org/3/movie/{movie_id}?"+language_part
         details_json = tmdb_api_call(tmdb_movie_details_url)
         print(f"adding data for movie: {movie_id}...{cnt}")
         tmdb_movie_details_list.append(details_json)
         cnt += 1        
+    else:
+        print(f"movie: {id} with no movie data..")
+
+write_to_file_with("tmdb_movie_details.json", json.dumps(tmdb_movie_details_list))
+
+
+
+#  ------------------------------
+
+# search_imdb_id_string = "title/tt"
+# movies_list_files = "dataset/1_movies_per_genre"
+# imdb_id_list = []
+# for file_name in os.listdir(movies_list_files):
+#     file_path = movies_list_files+"/"+file_name
+#     with open(file_path, 'r') as file:
+#         for line in file:
+#             if search_imdb_id_string in line:
+#                 index = line.find(search_imdb_id_string)
+#                 imdb_id_index = index+len(search_imdb_id_string) - 2
+#                 imdb_id_end_index = line.find("/", imdb_id_index)
+#                 imdb_id = line[imdb_id_index:imdb_id_end_index]
+#                 if imdb_id not in imdb_id_list:
+#                     imdb_id_list.append(imdb_id)
+# print(f"imdb ids count: {len(imdb_id_list)}")
+
+
+# tmdb_url_part1 = "https://api.themoviedb.org/3/find/"
+# tmdb_url_part2 = "?external_source=imdb_id"
+# language_part = "language=en-US"
+
+# headers = {
+#     "accept": "application/json",
+#     "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI3NTc2NmM1Y2U3MDFjZjM0Mzc0NmYyZTVhZWMzZTZiYiIsIm5iZiI6MTcyNzM5MjUxNi44NDg3NTIsInN1YiI6IjY2ZDViNWIyMjM0MTMzOTE5NzE4MjVmNSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.BjN9MP_Md4XG2cm9eiCu56VRZ61pIr_U77GDiO41ywo"
+# }
+
+# tmdb_movie_details_list = []
+# cnt = 1
+# for id in imdb_id_list:
+#     tmdb_url = tmdb_url_part1+id+tmdb_url_part2+"&"+language_part
+#     json_data = tmdb_api_call(tmdb_url)
+#     if json_data is not None or len(json_data['movie_results']) != 0:
+#         movie_id = json_data['movie_results'][0]['id']
+#         tmdb_movie_details_url = f"https://api.themoviedb.org/3/movie/{movie_id}?"+language_part
+#         details_json = tmdb_api_call(tmdb_movie_details_url)
+#         print(f"adding data for movie: {movie_id}...{cnt}")
+#         tmdb_movie_details_list.append(details_json)
+#         cnt += 1        
     
 
-write_to_file_with("dataset/tmdb_movie_details.json", json.dumps(tmdb_movie_details_list))
+# write_to_file_with("dataset/tmdb_movie_details.json", json.dumps(tmdb_movie_details_list))
 
 
 
